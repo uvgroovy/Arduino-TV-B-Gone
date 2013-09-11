@@ -1,5 +1,6 @@
 #include "main.h"
 
+// This contains the pairs that appear in the code
 const uint16_t code_ACTimes[] PROGMEM = {
   895, 446,
   61,  52,
@@ -9,12 +10,21 @@ const uint16_t code_ACTimes[] PROGMEM = {
   61,  52
 };
 
-/* original
-origcodes =  [0, 1, 1,1,2,1,1,1,1,2,1,2,1,2,2,2,2,2,1,1,1,2,1,1,1,1,2,2,2,1,2,2,2,3,4, 3]
-print "numCodes", len(origcodes)
+/* 
+
+# count the number of samples in a peak\zero in audacity, and use 
+# this function to convert them to a time in 10 usecs (as
+# used by tvbgone code)
+# the table above was created using this technique
 def samplesTo10USec(x):
    return (x*1000*100/44100)
 
+# now we write the codes from the wave, in order
+# each number is the index of the corresponding on\off times in the codes table
+origcodes =  [0, 1, 1,1,2,1,1,1,1,2,1,2,1,2,2,2,2,2,1,1,1,2,1,1,1,1,2,2,2,1,2,2,2,3,4, 3]
+print "numCodes", len(origcodes)
+
+# compress this, to use with the code table.
 def toCodes(l,compression):
     s = ""
     for x in l:
