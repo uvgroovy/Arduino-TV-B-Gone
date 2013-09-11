@@ -75,9 +75,10 @@ This project transmits a bunch of TV POWER codes, one right after the other,
 This project is a good example of how to use the AVR chip timers.
  */
 
-extern PGM_P *NApowerCodes[] PROGMEM;
-extern PGM_P *EUpowerCodes[] PROGMEM;
-extern uint8_t num_NAcodes, num_EUcodes;
+extern PGM_P *ACpowerCodes[] PROGMEM;
+// extern PGM_P *EUpowerCodes[] PROGMEM;
+extern uint8_t num_ACcodes;
+//extern uint8_t num_NAcodes, num_EUcodes;
 
 /* This function is the 'workhorse' of transmitting IR codes.
  Given the on and off times, it turns on the PWM output on and off
@@ -215,11 +216,8 @@ void setup()   {
   }
 
   // Indicate how big our database is
-  DEBUGP(putstring("\n\rNA Codesize: ");
-  putnum_ud(num_NAcodes);
-  );
-  DEBUGP(putstring("\n\rEU Codesize: ");
-  putnum_ud(num_EUcodes);
+  DEBUGP(putstring("\n\rAC Codesize: ");
+  putnum_ud(num_ACcodes);
   );
 
   // Tell the user what region we're in  - 3 flashes is NA, 6 is EU
@@ -241,11 +239,11 @@ Start_transmission:
   // determine region from REGIONSWITCH: 1 = NA, 0 = EU
   if (digitalRead(REGIONSWITCH)) {
     region = NA;
-    num_codes = num_NAcodes;
+    num_codes = num_ACcodes;
   }
   else {
     region = EU;
-    num_codes = num_EUcodes;
+    num_codes = num_ACcodes;
   }
 
   // for every POWER code in our collection
@@ -258,10 +256,10 @@ Start_transmission:
 
     // point to next POWER code, from the right database
     if (region == NA) {
-      data_ptr = (PGM_P)pgm_read_word(NApowerCodes+i);
+      data_ptr = (PGM_P)pgm_read_word(ACpowerCodes+i);
     }
     else {
-      data_ptr = (PGM_P)pgm_read_word(EUpowerCodes+i);
+      data_ptr = (PGM_P)pgm_read_word(ACpowerCodes+i);
     }
 
     // print out the address in ROM memory we're reading
@@ -308,7 +306,7 @@ Start_transmission:
     // transmitting offTime means no output from the IR emitters for the
     // length of time specified in offTime
 
-#if 0
+#if DEBUG
 
     // print out all of the pulse pairs
     for (uint8_t k=0; k<numpairs; k++) {
@@ -368,7 +366,7 @@ Start_transmission:
   // flash the visible LED on PB0  8 times to indicate that we're done
   delay_ten_us(65500); // wait maxtime
   delay_ten_us(65500); // wait maxtime
-  quickflashLEDx(8);
+  slowflashLEDx(8);
 
 }
 
@@ -423,6 +421,15 @@ void quickflashLEDx( uint8_t x ) {
     quickflashLED();
   }
 }
+// This function just flashes the visible LED a couple times, used to
+// tell the user what region is selected
+void slowflashLEDx( uint8_t x ) {
+  quickflashLED();
+  while(--x) {
+    delay_ten_us(50000);     // 150 millisec delay between flahes
+    quickflashLED();
+  }
+}
 
 
 
@@ -439,7 +446,7 @@ void sleepNow()
 
   attachInterrupt(0, wakeUpNow, LOW);         // use interrupt 0 (pin 2) and run function
   // wakeUpNow when pin 2 gets LOW
-
+                         
   sleep_mode();                               // here the device is actually put to sleep!!
   // THE PROGRAM CONTINUES FROM HERE ON WAKE
 

@@ -3,7 +3,7 @@
 
 // The TV-B-Gone for Arduino can use
 //   either the EU or the NA database of POWER CODES
-// EU is for Europe, Middle East, Australia, New Zealand, and some countries in Africa and South America
+// ` is for Europe, Middle East, Australia, New Zealand, and some countries in Africa and South America
 // NA is for North America, Asia, and the rest of the world not covered by EU
 
 // Two regions!
@@ -42,4 +42,4 @@ struct IrCode {
   uint8_t bitcompression;
   uint16_t const *times;
   uint8_t const*codes;
-};
+}; 
