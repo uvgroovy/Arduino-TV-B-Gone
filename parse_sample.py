@@ -1,6 +1,10 @@
 import wave
 import struct
 
+
+NOISE_TRESHOLD = 500
+CLOSENESS_THRESHOLD = 5
+
 import matplotlib.pyplot as plt
 
 def getSamples(f):
@@ -20,6 +24,8 @@ def getSamples(f):
         sample = wf.readframes(1)
     return wf.getframerate(),samples
 
+
+
 # this function assumes that we used a sound card to sample, and that the PWM wave will appear continuous due to the low sample rate
 def normalizeSamples(s):
     maxS = max(s)
@@ -32,7 +38,7 @@ def normalizeSamples(s):
 
     # abs(x) > 5000 = ignore noise
     # c = check for signal
-    new_s =  [1 if (abs(x) > 5000 ) and c(x) else 0 for x in s]
+    new_s =  [1 if (abs(x) > NOISE_TRESHOLD ) and c(x) else 0 for x in s]
 
     # remove leading zeros
     while new_s[0] == 0:
@@ -88,7 +94,7 @@ def getNormalizedPairs(streches):
     return pairs
 
 
-rate, s = getSamples("off-code.wav")
+rate, s = getSamples("code.wav")
 new_s = normalizeSamples(s)
 
 # new s = 1 when there is pwm. 0 otherwise
@@ -101,5 +107,5 @@ streches = [samplesTo10USec(x, rate) for x in streches]
 pairs = getNormalizedPairs(streches)
 allPairs = list(set(pairs))
 indexPairs = [allPairs.index(x) for x in pairs]
-print allPairs, indexPairs
+print (38000,allPairs, indexPairs)
 print pairs
