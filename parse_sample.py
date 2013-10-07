@@ -1,6 +1,6 @@
 import wave
 import struct
-
+from array import array
 
 NOISE_TRESHOLD = 500
 CLOSENESS_THRESHOLD = 5
@@ -94,7 +94,31 @@ def getNormalizedPairs(streches):
     return pairs
 
 
-rate, s = getSamples("code.wav")
+chunk = 1024
+CHANNELS = 1
+RATE = 44100
+
+def record(seconds):
+    import pyaudio
+    FORMAT = pyaudio.paInt16
+    p = pyaudio.PyAudio()
+
+    stream = p.open(format=FORMAT,
+                    channels=CHANNELS,
+                    rate=RATE,
+                    input=True,
+                    output=True,
+                    frames_per_buffer=chunk)
+    data = ""
+    for i in range(0, 44100 / chunk * seconds):
+        data += stream.read(chunk)
+    return data
+
+# rate, s = getSamples("code.wav")
+print "Recording now"
+data = record(2)
+print "Done recording"
+rate, s = RATE, array('h', data)
 new_s = normalizeSamples(s)
 
 # new s = 1 when there is pwm. 0 otherwise
