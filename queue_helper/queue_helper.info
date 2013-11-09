@@ -1,0 +1,14 @@
+name = Queue helper
+description = Insert items to SQS Q.
+package = Queues
+core = 7.x
+
+dependencies[] = awssdk
+dependencies[] = libraries  (>2=.x)
+
+; Information added by drupal.org packaging script on 2013-10-06
+version = "7.x-1.x-dev"
+core = "7.x"
+project = "queuehelper"
+datestamp = "1381053291"
+

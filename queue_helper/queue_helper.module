@@ -1,0 +1,82 @@
+<?php
+
+/**
+ * @file
+ * Examples demonstrating the Drupal Form API.
+ */
+
+/**
+ * @defgroup form_example Example: Form API
+ * @ingroup examples
+ * @{
+ * Examples demonstrating the Drupal Form API.
+ *
+ * The Form Example module is a part of the Examples for Developers Project
+ * and provides various Drupal Form API Examples. You can download and
+ * experiment with this code at the
+ * @link http://drupal.org/project/examples Examples for Developers project page. @endlink
+ */
+
+/**
+ * Implements hook_menu().
+ *
+ * Here we set up the URLs (menu entries) for the
+ * form examples. Note that most of the menu items
+ * have page callbacks and page arguments set, with
+ * page arguments set to be functions in external files.
+ */
+function queue_helper_menu() {
+  $items = array();
+ 
+  $items['queue-add'] = array(
+    'title' => '#7',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('queue_helper_add_to_queue'),
+    'access callback' => TRUE,
+    'description' => 'Add to the queue',
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'queue_helper_forms.inc',
+    'access arguments' => array('submit item to sqs'),
+  );
+  
+  return $items;
+}
+
+/**
+ * hook_permission.
+ */
+function queue_helper_permission() {
+  return array(
+    'submit item to sqs' => array(
+      'title' => t('Submit an item to an SQS Queue'),
+      'description' => t('Allows to use the queue helper module to submit items to a Q. can be used to allow\disallow anon access.'),
+    ),
+  );
+}
+
+/**
+ * Page callback for our general info page.
+ */
+function queue_helper_intro() {
+  $markup = t('This moudle is very minimal, and provides a way to add items to an SQS queue.');
+  return array('#markup' => $markup);
+}
+
+/**
+ * Implements hook_help().
+ */
+function queue_helper_help($path, $arg) {
+  switch ($path) {
+    case 'queue-add':
+      // TODO: Update the URL.
+      $help = t('This form will send items to an SQS Queue.');
+      break;
+  }
+  if (!empty($help)) {
+    return '<p>' . $help . '</p>';
+  }
+}
+
+/**
+ * @} End of "defgroup form_example".
+ */

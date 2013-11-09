@@ -1,0 +1,33 @@
+<?php
+
+/**
+ * @file
+ * Test file for form_example module.
+ */
+
+/**
+ * Default test case for the form_example module.
+ */
+class FormExampleTestCase extends DrupalWebTestCase {
+
+  public static function getInfo() {
+    return array(
+      'name' => 'Form Example',
+      'description' => 'Various tests on the form_example module.' ,
+      'group' => 'Examples',
+    );
+  }
+
+  function setUp() {
+    parent::setUp('form_example');
+  }
+
+  /**
+   * Test the form
+   */
+  function testForm() {
+
+    $this->drupalPost('queue-add', array('qname' => t('name'), 'item' => t('item')), t('Submit'));
+    
+  }
+}
