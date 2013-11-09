@@ -1,11 +1,10 @@
 import wave
 import struct
+import math
 from array import array
 
 NOISE_TRESHOLD = 500
 CLOSENESS_THRESHOLD = 5
-
-import matplotlib.pyplot as plt
 
 def getSamples(f):
     wf = wave.open(f)
@@ -62,8 +61,10 @@ def convertSamplesToStreches(normalizedSamples):
     return streches
 
 def samplesTo10USec(x, rate):
-   return (x*1000*100/rate)
+    return (x*1000*100/rate)
 
+def tenUSecTosamples(x, rate):
+    return x*rate/1000/100
 
 def getCloseMatch(value, data):
     for v in data:
@@ -114,22 +115,93 @@ def record(seconds):
         data += stream.read(chunk)
     return data
 
-# rate, s = getSamples("code.wav")
-print "Recording now"
-data = record(2)
-print "Done recording"
-rate, s = RATE, array('h', data)
-new_s = normalizeSamples(s)
 
-# new s = 1 when there is pwm. 0 otherwise
-# plt.plot(new_s)
-# plt.show()
+############ generate pi wave file, instead of arduino codes!
+def get_basic_wave(f, all_pairs, index_pairs, frequencey=38000):
+    framerate = 44100
+    wave_list = []
+    for i in index_pairs:
+        on,off = all_pairs[i]
+        on = tenUSecTosamples(on, framerate)
+        off = tenUSecTosamples(off, framerate)
+        wave_list += sine_wave(on, frequencey/2, framerate) + [0]*off
 
-streches = convertSamplesToStreches(new_s)
-streches = [samplesTo10USec(x, rate) for x in streches]
+    wav_file = wave.open(f, "wb")
+    nchannels = 2
+    sampwidth = 2
+    nframes = len(wave_list)*2
+    comptype = "NONE"
+    compname = "not compressed"
 
-pairs = getNormalizedPairs(streches)
-allPairs = list(set(pairs))
-indexPairs = [allPairs.index(x) for x in pairs]
-print (38000,allPairs, indexPairs)
-print pairs
+    wav_file.setparams((nchannels, sampwidth, framerate, nframes,
+        comptype, compname))
+
+    for s in wave_list:
+        # write the audio frames to file
+        s = s*((2**15)-1)
+        wav_file.writeframes(struct.pack('h', s))
+        wav_file.writeframes(struct.pack('h', -s))
+
+    wav_file.close()
+
+
+def sine_wave(count, frequency=440.0, framerate=44100, amplitude=0.8):
+    if amplitude > 1.0:
+        amplitude = 1.0
+    if amplitude < 0.0:
+        amplitude = 0.0
+    return [float(amplitude) * math.sin(2.0*math.pi*float(frequency)*(float(i)/float(framerate))) for i in range(count)]
+
+############################################
+
+
+
+
+def main():
+    import argparse   # only supported on python 2.7, rest of this script may be used with python 2.6
+    parser = argparse.ArgumentParser(description='RC Parsing tool')
+
+    parser.add_argument('--parsefile', dest="wavfile", type=argparse.FileType('rb'), help='Raw signal wave file to parse. leave empty to record live')
+    parser.add_argument('--plot',dest="plot", action='store_true', help='Plot the normalized signal - good for debugging. If doesn\'t match with original signal, change threshholds.')
+    parser.add_argument('--frequency',dest="freq", type=int, default=38000, help='Create the configuration at a location. does nothing else.')
+    parser.add_argument('--outfile',dest="outfile", type=argparse.FileType('wb'), help='Create the configuration at a location. does nothing else.')
+
+    args = parser.parse_args()
+
+    if args.wavfile:
+        rate, s = getSamples(args.wavfile)
+    else:
+        print "Recording now"
+        data = record(2)
+        print "Done recording"
+        rate, s = RATE, array('h', data)
+
+    # convert the samples for a weird wave, to 1 when there is PWM and 0 when there isn't.
+    # also trims the signal
+    new_s = normalizeSamples(s)
+
+    if args.plot:
+        import matplotlib.pyplot as plt
+        # new s = 1 when there is pwm. 0 otherwise
+        plt.plot(new_s)
+        plt.show()
+
+    # convert to streches (pairs of (on samples, off samples)
+    streches = convertSamplesToStreches(new_s)
+    # convert the streches from size of samples to size of 10 uSecs
+    streches = [samplesTo10USec(x, rate) for x in streches]
+
+    # merge similar pairs
+    pairs = getNormalizedPairs(streches)
+    # encode
+    allPairs = list(set(pairs))
+    indexPairs = [allPairs.index(x) for x in pairs]
+
+    print (args.freq,allPairs, indexPairs)
+
+    if args.outfile:
+        get_basic_wave(args.outfile, allPairs, indexPairs, args.freq)
+
+
+if __name__ == "__main__":
+    main()
