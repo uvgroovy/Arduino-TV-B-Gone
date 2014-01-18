@@ -101,9 +101,8 @@ RATE = 44100
 
 def record(seconds):
     import pyaudio
-    FORMAT = pyaudio.paInt16
     p = pyaudio.PyAudio()
-
+    FORMAT = pyaudio.paInt16
     stream = p.open(format=FORMAT,
                     channels=CHANNELS,
                     rate=RATE,
@@ -111,24 +110,29 @@ def record(seconds):
                     output=True,
                     frames_per_buffer=chunk)
     data = ""
-    for i in range(0, 44100 / chunk * seconds):
+    for i in range(0, RATE / chunk * seconds):
         data += stream.read(chunk)
     return data
 
 
-############ generate pi wave file, instead of arduino codes!
-def get_basic_wave(f, all_pairs, index_pairs, frequencey=38000):
-    framerate = 44100
+def get_wave_values(all_pairs, index_pairs, framerate, frequencey):
     wave_list = []
     for i in index_pairs:
         on,off = all_pairs[i]
         on = tenUSecTosamples(on, framerate)
         off = tenUSecTosamples(off, framerate)
         wave_list += sine_wave(on, frequencey/2, framerate) + [0]*off
+    # make it into 16bit sample
+    return [s*((2**15)-1) for s in wave_list]
 
-    wav_file = wave.open(f, "wb")
+############ generate pi wave file, instead of arduino codes!
+def get_basic_wave(fout, all_pairs, index_pairs, frequencey=38000):
+    framerate = RATE
+    wave_list = get_wave_values(all_pairs, index_pairs, framerate, frequencey)
+
+    wav_file = wave.open(fout, "wb")
     nchannels = 2
-    sampwidth = 2
+    sampwidth = 2 # 2 = 16 bits
     nframes = len(wave_list)*2
     comptype = "NONE"
     compname = "not compressed"
@@ -138,11 +142,30 @@ def get_basic_wave(f, all_pairs, index_pairs, frequencey=38000):
 
     for s in wave_list:
         # write the audio frames to file
-        s = s*((2**15)-1)
         wav_file.writeframes(struct.pack('h', s))
         wav_file.writeframes(struct.pack('h', -s))
 
     wav_file.close()
+
+def play(all_pairs, index_pairs, frequencey, framerate=RATE):
+    import pyaudio
+    FORMAT = pyaudio.paInt16
+
+    p = pyaudio.PyAudio()
+
+    stream = p.open(format=FORMAT,
+                    channels=2,
+                    rate=RATE,
+                    output=True)
+
+    wave_list = get_wave_values(all_pairs, index_pairs, framerate, frequencey)
+
+    data = "".join([struct.pack('hh', s,-s) for s in wave_list])
+    stream.write(data)
+    stream.stop_stream()
+    stream.close()
+    # close PyAudio (5)
+    p.terminate()
 
 
 def sine_wave(count, frequency=440.0, framerate=44100, amplitude=0.8):
@@ -160,14 +183,26 @@ def sine_wave(count, frequency=440.0, framerate=44100, amplitude=0.8):
 def main():
     import argparse   # only supported on python 2.7, rest of this script may be used with python 2.6
     parser = argparse.ArgumentParser(description='RC Parsing tool')
+    subparsers = parser.add_subparsers()
 
-    parser.add_argument('--parsefile', dest="wavfile", type=argparse.FileType('rb'), help='Raw signal wave file to parse. leave empty to record live')
-    parser.add_argument('--plot',dest="plot", action='store_true', help='Plot the normalized signal - good for debugging. If doesn\'t match with original signal, change threshholds.')
-    parser.add_argument('--frequency',dest="freq", type=int, default=38000, help='Create the configuration at a location. does nothing else.')
-    parser.add_argument('--outfile',dest="outfile", type=argparse.FileType('wb'), help='Create the configuration at a location. does nothing else.')
+    command_subparser = subparsers.add_parser('encode', help="Encode a sample to json format RC code")
+
+    command_subparser.add_argument('--infile', dest="wavfile", type=argparse.FileType('rb'), help='Raw signal wave file to parse. leave empty to record live')
+    command_subparser.add_argument('--plot',dest="plot", action='store_true', help='Plot the normalized signal - good for debugging. If doesn\'t match with original signal, change threshholds.')
+    command_subparser.add_argument('--frequency',dest="freq", type=int, default=38000, help='The frequence of the signal in the output.')
+    command_subparser.add_argument('--outfile',dest="outfile", type=argparse.FileType('wb'), help='Optional output wav file.')
+    command_subparser.set_defaults(func=encode)
+
+    command_subparser = subparsers.add_parser('decode', help="Decode and play json format RC code")
+    command_subparser.add_argument('--infile', dest="json", default=("-"), type=argparse.FileType('rb'), help='The encoded signal pairs. in JSON format')
+    command_subparser.add_argument('--outfile',dest="outfile", type=argparse.FileType('wb'), help='Output wave file. leave empty to play the result sound')
+    command_subparser.set_defaults(func=decode)
 
     args = parser.parse_args()
+    args.func(args)
 
+def encode(args):
+    import json
     if args.wavfile:
         rate, s = getSamples(args.wavfile)
     else:
@@ -197,11 +232,20 @@ def main():
     allPairs = list(set(pairs))
     indexPairs = [allPairs.index(x) for x in pairs]
 
-    print (args.freq,allPairs, indexPairs)
+    print json.dumps((args.freq,allPairs, indexPairs))
 
     if args.outfile:
         get_basic_wave(args.outfile, allPairs, indexPairs, args.freq)
 
+
+def decode(args):
+    import json
+    freq, allPairs, indexPairs = json.load(args.json)
+
+    if args.outfile:
+        get_basic_wave(args.outfile, allPairs, indexPairs, args.freq)
+    else:
+        play(allPairs, indexPairs, freq)
 
 if __name__ == "__main__":
     main()
